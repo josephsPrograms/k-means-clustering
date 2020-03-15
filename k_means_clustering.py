@@ -2,12 +2,23 @@
 # PSU ID: 943356678
 import numpy as np
 import csv
+import matplotlib.pyplot as plt
 
 
 # Function for getting data
 def read_file(file_name):
     with open(file_name) as opened_file:
         return np.asarray(list(csv.reader(opened_file, delimiter=','))).astype(int)
+
+
+# function to plot digits on 8 x 8 grey scale
+def plot_digits(data_matrix, cluster, k):
+    data = np.row_stack((data_matrix[0:, 0:data_matrix.shape[1] - 1], cluster))
+    fig = plt.figure(figsize=(4, 4))
+    fig.subplots_adjust(left=0, right=1, bottom=0, top=1, hspace=0.05, wspace=0.05)
+    for i in range(data.shape[0]):
+        plt.imshow(data.reshape(-1, 8, 8)[i], cmap=plt.cm.binary, interpolation='nearest')
+    plt.show()
 
 
 def euclidean_distance_squared(x_vector, m_vector):
@@ -35,6 +46,8 @@ def mean_squared_seperation(clusters):
     return sum / denom
 
 
+# assign matrix data to clusters using the matrix data and an array of
+# the clusters each row in the matrix is assigned to
 def update_cluster(incoming_matrix, assignments, clusters):
     cluster_its = np.full(clusters.shape[0], range(clusters.shape[0]))
     cluster_row_its = np.full(clusters.shape[1], range(clusters.shape[1]))
@@ -59,6 +72,9 @@ def get_distances(incoming_data, cluster_centers):
     return np.asarray(distances_to_return)
 
 
+# Assign each row of 'input_size' matrix to a cluster
+# by creating vector of size input_size column length,
+# to represent each row and which cluster it is assigned to
 def assign_inputs(input_size, distances):
     assignments = np.full(input_size, range(input_size))
     for it in assignments[0:]:
@@ -70,6 +86,7 @@ def get_entropy(assignments, data_matrix, k_clusters):
     cluster_its = np.full(k_clusters, range(k_clusters))
     data_matrix_row_size = data_matrix.shape[1]
     entropies = []
+    # loop through each cluster and sum the entropies
     for c in cluster_its[0:]:
         # labels of data in cluster c
         matrix_data_labels = data_matrix[np.where(assignments == c)][:, data_matrix_row_size - 1]
@@ -82,6 +99,7 @@ def get_entropy(assignments, data_matrix, k_clusters):
         counts = np.asarray(counts)
         for count in range(counts.shape[0]):
             sum += (counts[count] / num_of_labels) * np.log2(counts[count] / num_of_labels)
+        #     put the entropies in a list to return so they are organized by iteration in main loop
         entropies.append(-sum if sum != 0.0 else 0.0)
     return np.asarray(entropies)
 
@@ -89,15 +107,14 @@ def get_entropy(assignments, data_matrix, k_clusters):
 def get_mean_entropy(entropies, assignments, data_matrix, k_clusters):
     data_matrix_row_size = data_matrix.shape[1] - 1
     data_matrix_size = data_matrix.shape[0]
-    labels = data_matrix[:, data_matrix_row_size]
     sum = 0.0
     for k in range(k_clusters):
-        # print(entropies[k])
         matrix_data = data_matrix[np.where(assignments == k)][:, data_matrix_row_size]
         sum += (matrix_data.shape[0] / data_matrix_size) * entropies[k]
     return sum
 
 
+# Get the class each cluster is assigned to
 def get_cluster_labels(incoming_clusters, incoming_assignments, data_matrix):
     cluster_its = incoming_clusters.shape[0]
     data_matrix_row_size = data_matrix.shape[1] - 1
@@ -113,58 +130,73 @@ test_data = read_file('optdigits/optdigits.test')
 data_row_length = training_data.shape[1] - 1
 num_of_training_rows = training_data.shape[0]
 num_of_test_row = test_data.shape[0]
+confusion_matrix_list = []
 
-cluster_size = 10
+cluster_sizes = np.asarray([10, 30])
+for cluster_size in cluster_sizes[0:]:
+    confusion_matrix = np.full((10, 10), 0.0)
+    clusters = []
+    cluster_labels = []
+    assignment = []
+    distances = []
+    average_mean_squared_list = []
+    mean_squared_seperation_list = []
+    mean_entropy_list = []
+    for _ in range(5):
+        # Randomly generate cluster data from training data
+        random_cluster_center_indices = np.random.choice(num_of_training_rows, cluster_size, replace=False)
+        random_cluster_centers = training_data[random_cluster_center_indices, :data_row_length]
+        index = 0
+        # while our clusters are changing do...
+        while True:
+            distances = get_distances(training_data, random_cluster_centers)
 
-clusters = []
-cluster_labels = []
-assignment = []
-distances = []
-average_mean_squared_list = []
-mean_squared_seperation_list = []
-mean_entropy_list = []
-for _ in range(5):
-    random_cluster_center_indices = np.random.choice(num_of_training_rows, cluster_size, replace=False)
-    random_cluster_centers = training_data[random_cluster_center_indices, :data_row_length]
-    index = 0
-    while True:
-        distances = get_distances(training_data, random_cluster_centers)
+            assignment = assign_inputs(num_of_training_rows, distances)
+            clusters_to_update = clusters[len(clusters) - 1] if index > 0 else random_cluster_centers
+            clusters.append(update_cluster(training_data, assignment, clusters_to_update))
 
-        assignment = assign_inputs(num_of_training_rows, distances)
-        clusters_to_update = clusters[len(clusters) - 1] if index > 0 else random_cluster_centers
-        clusters.append(update_cluster(training_data, assignment, clusters_to_update))
-        if index > 1 and np.array_equal(clusters[index], clusters[index - 1]):
-            break
-        index += 1
+            if index > 1 and np.array_equal(clusters[index], clusters[index - 1]):
+                break
+            index += 1
 
-    mean_squared_list = []
-    for i in range(distances.shape[0]):
-        mean_squared_list.append(mean_squared(distances[i]))
-    mean_squared_list = np.asarray(mean_squared_list)
-    average_mean_squared_list.append(average_mean_squared(mean_squared_list, cluster_size))
-    mean_squared_seperation_list.append(mean_squared_seperation(clusters[len(clusters) - 1]))
+        # get all 5 mean squared, average mean, mean square seperation, and entropies for report
+        mean_squared_list = []
+        for i in range(distances.shape[0]):
+            mean_squared_list.append(mean_squared(distances[i]))
+        mean_squared_list = np.asarray(mean_squared_list)
+        average_mean_squared_list.append(average_mean_squared(mean_squared_list, cluster_size))
+        mean_squared_seperation_list.append(mean_squared_seperation(clusters[len(clusters) - 1]))
 
-    entropies = get_entropy(assignment, training_data, cluster_size)
-    mean_entropy_list.append(get_mean_entropy(entropies, assignment, training_data, cluster_size))
+        entropies = get_entropy(assignment, training_data, cluster_size)
+        mean_entropy_list.append(get_mean_entropy(entropies, assignment, training_data, cluster_size))
 
-average_mean_squared_list = np.asarray(average_mean_squared_list)
-mean_squared_seperation_list = np.asarray(mean_squared_seperation_list)
-mean_entropy_list = np.asarray(mean_entropy_list)
-index_of_best = np.where(average_mean_squared_list == np.amin(average_mean_squared_list))[0][0]
-print('best of: ')
-print('average mean square error: ', average_mean_squared_list[index_of_best])
-print('mean square seperation: ', average_mean_squared_list[index_of_best])
-print('mean entropy: ', mean_entropy_list[index_of_best])
+    average_mean_squared_list = np.asarray(average_mean_squared_list)
+    mean_squared_seperation_list = np.asarray(mean_squared_seperation_list)
+    mean_entropy_list = np.asarray(mean_entropy_list)
+    index_of_best = np.where(average_mean_squared_list == np.amin(average_mean_squared_list))[0][0]
 
-final_clusters = clusters[len(clusters) - 1]
-cluster_labels = get_cluster_labels(final_clusters, assignment, training_data)
-distances = get_distances(test_data, final_clusters)
-assignments = assign_inputs(test_data.shape[0], distances)
+    print('best of: ')
+    print('average mean square error: ', average_mean_squared_list[index_of_best])
+    print('mean square seperation: ', average_mean_squared_list[index_of_best])
+    print('mean entropy: ', mean_entropy_list[index_of_best])
 
-accuracy = 0.0
-for c in range(cluster_size):
-    matrix_data = test_data[np.where(assignments == c)][:, data_row_length]
-    number_of_hits = np.where(matrix_data == cluster_labels[c])
-    accuracy += number_of_hits[0].shape[0]
+    # final cluster created from training
+    final_clusters = clusters[len(clusters) - 1]
+    cluster_labels = get_cluster_labels(final_clusters, assignment, training_data)
+    # figure out which rows in the data belong to which cluster
+    distances = get_distances(test_data, final_clusters)
+    assignments = assign_inputs(test_data.shape[0], distances)
 
-print(accuracy / num_of_test_row)
+    accuracy = 0.0
+    # find acccuracy
+    for c in range(cluster_size):
+        matrix_data = test_data[np.where(assignments == c)]
+        matrix_data_labels = test_data[np.where(assignments == c)][:, data_row_length]
+        for num in range(10):
+            confusion_matrix[cluster_labels[c]][num] += np.where(matrix_data_labels == num)[0].shape[0]
+        plot_digits(matrix_data, final_clusters[c], cluster_size)
+        number_of_hits = np.where(matrix_data_labels == cluster_labels[c])
+        accuracy += number_of_hits[0].shape[0]
+
+    print(accuracy / num_of_test_row)
+    print(confusion_matrix)
