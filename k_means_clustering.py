@@ -3,12 +3,23 @@
 import numpy as np
 import csv
 import matplotlib.pyplot as plt
+import sys
+
+# READ ME
+# This program should be run the same way assignment 3 was run:
+# py k_means_clustering.py trainfilepath testfilepath
 
 
 # Function for getting data
 def read_file(file_name):
     with open(file_name) as opened_file:
         return np.asarray(list(csv.reader(opened_file, delimiter=','))).astype(int)
+
+
+def read_user_input():
+    training_file_user_input = sys.argv[1]
+    test_file_user_input = sys.argv[2]
+    return training_file_user_input, test_file_user_input
 
 
 # function to plot digits on 8 x 8 grey scale
@@ -125,8 +136,9 @@ def get_cluster_labels(incoming_clusters, incoming_assignments, data_matrix):
     return cluster_labels
 
 
-training_data = read_file('optdigits/optdigits.train')
-test_data = read_file('optdigits/optdigits.test')
+data_recieved = read_user_input()
+training_data = read_file(data_recieved[0])
+test_data = read_file(data_recieved[1])
 data_row_length = training_data.shape[1] - 1
 num_of_training_rows = training_data.shape[0]
 num_of_test_row = test_data.shape[0]
