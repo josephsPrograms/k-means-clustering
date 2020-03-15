@@ -98,62 +98,58 @@ def get_mean_entropy(entropies, assignments, data_matrix, k_clusters):
     return sum
 
 
-# training_data = read_file('optdigits/optdigits.train')
-training_data = np.asarray([[0, 1, 1.0], [1, 0, 1.0], [2, 0, 0.0], [4, 0, 1.0]]).astype(float)
+training_data = read_file('optdigits/optdigits.train')
+# training_data = np.asarray([[0, 1, 1.0], [1, 0, 1.0], [2, 0, 0.0], [4, 0, 1.0]]).astype(float)
 # test_data = read_file('optdigits/optdigits.test')
 data_row_length = training_data.shape[1] - 1
 num_of_training_rows = training_data.shape[0]
 
-cluster_size = 2
+cluster_size = 10
 # random_cluster_center_indices = np.random.choice(num_of_training_rows, cluster_size, replace=False)
 # random_cluster_centers = training_data[random_cluster_center_indices, :data_row_length]
 
 clusters = []
 
-random_cluster_centers = np.asarray([[1, 1], [4, 1]]).astype(float)
+# random_cluster_centers = np.asarray([[1, 1], [4, 1]]).astype(float)
 # updated = update_cluster(training_data[0:, 0:data_row_length])
 
 clusters = []
 assignments = []
-distance_list = []
-index = 0
-while True:
-    distance_list = get_distances(training_data, random_cluster_centers)
+distances = []
+average_mean_squared_list = []
+mean_squared_seperation_list = []
+mean_entropy_list = []
+for _ in range(5):
+    random_cluster_center_indices = np.random.choice(num_of_training_rows, cluster_size, replace=False)
+    random_cluster_centers = training_data[random_cluster_center_indices, :data_row_length]
+    index = 0
+    while True:
+        distances = get_distances(training_data, random_cluster_centers)
 
-    assignments = assign_inputs(num_of_training_rows, distance_list)
+        assignment = assign_inputs(num_of_training_rows, distances)
 
-    clusters.append(update_cluster(training_data, assignments, random_cluster_centers))
-    if index > 1:
-        if np.array_equal(clusters[index], clusters[index -1]):
-            break
-    index += 1
+        clusters.append(update_cluster(training_data, assignment, random_cluster_centers))
+        if index > 1:
+            if np.array_equal(clusters[index], clusters[index - 1]):
+                break
+        index += 1
 
-mean_squared_list = []
-for i in range(distance_list.shape[0]):
-    mean_squared_list.append(mean_squared(distance_list[i]))
+    mean_squared_list = []
+    for i in range(distances.shape[0]):
+        mean_squared_list.append(mean_squared(distances[i]))
+    mean_squared_list = np.asarray(mean_squared_list)
+    average_mean_squared_list.append(average_mean_squared(mean_squared_list, cluster_size))
+    mean_squared_seperation_list.append(mean_squared_seperation(clusters[len(clusters) - 1]))
 
-clusters = np.asarray(clusters)
+    entropies = get_entropy(assignment, training_data, cluster_size)
+    mean_entropy_list.append(get_mean_entropy(entropies, assignment, training_data, cluster_size))
 
-# print(clusters.shape)
-entropies = get_entropy(assignments, training_data, cluster_size)
-mean_entropy = get_mean_entropy(entropies, assignments, training_data, cluster_size)
-print(mean_entropy)
-
-# print(mean_squared_seperation(clusters[clusters.shape[0] - 1]))
-
-
-
-
-# print(average_mean_squared(np.asarray(mean_squared_list), cluster_size))
-# print(mean_squared_seperation(clusters[clusters.shape[0] - 1]))
-
-
-# print(mean_squared(distance_list2[0][np.where(assignments2 == 0)])) gets correct
-
-# distance_list = get_distances(training_data, random_cluster_centers)
-#
-# assignments = assign_inputs(num_of_training_rows, distance_list)
-#
-# cluster = update_cluster(training_data, assignments, random_cluster_centers)
-
-# print(cluster)
+average_mean_squared_list = np.asarray(average_mean_squared_list)
+mean_squared_seperation_list = np.asarray(mean_squared_seperation_list)
+mean_entropy_list = np.asarray(mean_entropy_list)
+index_of_best = np.where(average_mean_squared_list == np.amin(average_mean_squared_list))[0][0]
+print(index_of_best)
+print('best of: ')
+print('average mean square error: ', average_mean_squared_list[index_of_best])
+print('mean square seperation: ', average_mean_squared_list[index_of_best])
+print('mean entropy: ', mean_entropy_list[index_of_best])
