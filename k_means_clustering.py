@@ -48,14 +48,26 @@ def get_distances(incoming_data, cluster_centers):
     return np.asarray(distances_to_return)
 
 
+def assign_inputs(input_size, distances, k_clusters):
+    # print(distances.shape) (2, 4)
+    # print(x_inputs.shape)  (4, 3)
+    assignments = np.full(input_size, range(input_size))
+    print(distances)
+    for it in assignments[0:]:
+        # print(np.where(distances[...,it] == np.amin(distances[..., it]))[0][0]) 0, 0, 0, 1
+        # assignments[it] = np.max(distances[k])
+        assignments[it] = np.where(distances[...,it] == np.amin(distances[..., it]))[0][0]
+    return assignments
+
+
 # training_data = read_file('optdigits/optdigits.train')
 training_data = np.asarray([[0, 1, 0.0], [1, 0, 0.0], [2, 0, 0.0], [4, 0, 0.0]]).astype(float)
 # test_data = read_file('optdigits/optdigits.test')
 data_row_length = training_data.shape[1] - 1
 num_of_training_rows = training_data.shape[0]
 
-# k_cluster = 10
-# random_cluster_center_indices = np.random.choice(num_of_training_rows, k_cluster, replace=False)
+cluster_size = 2
+# random_cluster_center_indices = np.random.choice(num_of_training_rows, cluster_size, replace=False)
 # random_cluster_centers = training_data[random_cluster_center_indices, :data_row_length]
 
 random_cluster_centers = np.asarray([[1, 1], [4, 1]]).astype(float)
@@ -63,4 +75,7 @@ random_cluster_centers = np.asarray([[1, 1], [4, 1]]).astype(float)
 
 distance_list = get_distances(training_data, random_cluster_centers)
 
-print(distance_list)
+assignments = assign_inputs(num_of_training_rows, distance_list, cluster_size)
+print(assignments)
+
+# print(distance_list)
