@@ -26,12 +26,23 @@ def average_mean_squared(mean_squared_vector, k_values):
     return sum / k_values
 
 
-def update_cluster(incoming_matrix):
-    size_to_label = incoming_matrix.shape[1]
-    cluster_its = np.full(size_to_label, range(size_to_label))
-    return_cluster = np.full(size_to_label, 0.0)
+def mean_squared_seperation(clusters):
+    k_clusters = clusters.shape[0]
+    denom = (k_clusters * (k_clusters - 1)) / 2
+    sum = 0.0
+    for k in range(k_clusters):
+        sum += euclidean_distance_squared(clusters[k], clusters[k:])
+    return sum / denom
+
+
+def update_cluster(incoming_matrix, assignments, clusters):
+    cluster_its = np.full(clusters.shape[0], range(clusters.shape[0]))
+    cluster_row_its = np.full(clusters.shape[1], range(clusters.shape[1]))
+    return_cluster = np.empty_like(clusters)
     for i in cluster_its[0:]:
-        return_cluster[i] = np.sum(incoming_matrix[:, i]) / incoming_matrix.shape[0]
+        matrix_data = incoming_matrix[np.where(assignments == i)]
+        for r in cluster_row_its[0:]:
+            return_cluster[i][r] = np.sum(matrix_data[:, r]) / matrix_data.shape[0]
     return return_cluster
 
 
@@ -48,15 +59,10 @@ def get_distances(incoming_data, cluster_centers):
     return np.asarray(distances_to_return)
 
 
-def assign_inputs(input_size, distances, k_clusters):
-    # print(distances.shape) (2, 4)
-    # print(x_inputs.shape)  (4, 3)
+def assign_inputs(input_size, distances):
     assignments = np.full(input_size, range(input_size))
-    print(distances)
     for it in assignments[0:]:
-        # print(np.where(distances[...,it] == np.amin(distances[..., it]))[0][0]) 0, 0, 0, 1
-        # assignments[it] = np.max(distances[k])
-        assignments[it] = np.where(distances[...,it] == np.amin(distances[..., it]))[0][0]
+        assignments[it] = np.where(distances[..., it] == np.amin(distances[..., it]))[0][0]
     return assignments
 
 
@@ -75,7 +81,16 @@ random_cluster_centers = np.asarray([[1, 1], [4, 1]]).astype(float)
 
 distance_list = get_distances(training_data, random_cluster_centers)
 
-assignments = assign_inputs(num_of_training_rows, distance_list, cluster_size)
-print(assignments)
+assignments = assign_inputs(num_of_training_rows, distance_list)
 
-# print(distance_list)
+new_clusters = update_cluster(training_data, assignments, random_cluster_centers)
+
+distance_list2 = get_distances(training_data, new_clusters)
+
+assignments2 = assign_inputs(num_of_training_rows, distance_list2)
+
+# print(mean_squared(distance_list2[0][np.where(assignments2 == 0)])) gets correct
+
+new_clusters2 = update_cluster(training_data, assignments2, new_clusters)
+
+# print(new_clusters2)
