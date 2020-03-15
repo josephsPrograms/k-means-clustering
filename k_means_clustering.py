@@ -35,10 +35,20 @@ def update_cluster(incoming_matrix):
     return return_cluster
 
 
-# np.full(785, np.random.uniform(-0.5, 0.501, 785))
+def get_distances(incoming_data, cluster_centers):
+    data_its = np.full(incoming_data.shape[0], range(incoming_data.shape[0]))
+    m_its = np.full(cluster_centers.shape[0], range(cluster_centers.shape[0]))
+    distances_to_return = []
+    for m_it in m_its[0:]:
+        sub_distance_list = []
+        for it in data_its[0:]:
+            sub_distance_list.append(
+                euclidean_distance_squared(incoming_data[it, 0:data_row_length], cluster_centers[m_it]))
+        distances_to_return.append(sub_distance_list)
+    return np.asarray(distances_to_return)
 
 
-# training_data_temp = read_file('optdigits/optdigits.train')
+# training_data = read_file('optdigits/optdigits.train')
 training_data = np.asarray([[0, 1, 0.0], [1, 0, 0.0], [2, 0, 0.0], [4, 0, 0.0]]).astype(float)
 # test_data = read_file('optdigits/optdigits.test')
 data_row_length = training_data.shape[1] - 1
@@ -49,16 +59,8 @@ num_of_training_rows = training_data.shape[0]
 # random_cluster_centers = training_data[random_cluster_center_indices, :data_row_length]
 
 random_cluster_centers = np.asarray([[1, 1], [4, 1]]).astype(float)
-# updated = update_cluster(training_data[0:3, 0:data_row_length])
+# updated = update_cluster(training_data[0:, 0:data_row_length])
 
-data_its = np.full(training_data.shape[0], range(training_data.shape[0]))
-m_its = np.full(random_cluster_centers.shape[0], range(random_cluster_centers.shape[0]))
-distance_list = []
-for m_it in m_its[0:]:
-    sub_distance_list = []
-    for it in data_its[0:]:
-        sub_distance_list.append(euclidean_distance_squared(training_data[it, 0:data_row_length], random_cluster_centers[m_it]))
-    distance_list.append(sub_distance_list)
+distance_list = get_distances(training_data, random_cluster_centers)
 
-print(np.asarray(distance_list))
-
+print(distance_list)
