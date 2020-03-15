@@ -93,28 +93,32 @@ def get_mean_entropy(entropies, assignments, data_matrix, k_clusters):
     sum = 0.0
     for k in range(k_clusters):
         # print(entropies[k])
-        matrix_data = data_matrix[np.where(assignments == k)][:, data_matrix_row_size - 1]
+        matrix_data = data_matrix[np.where(assignments == k)][:, data_matrix_row_size]
         sum += (matrix_data.shape[0] / data_matrix_size) * entropies[k]
     return sum
 
 
+def get_cluster_labels(incoming_clusters, incoming_assignments, data_matrix):
+    cluster_its = incoming_clusters.shape[0]
+    data_matrix_row_size = data_matrix.shape[1] - 1
+    cluster_labels = []
+    for c in range(cluster_its):
+        matrix_data = data_matrix[np.where(incoming_assignments == c)][:, data_matrix_row_size]
+        cluster_labels.append(np.bincount(matrix_data).argmax())
+    return cluster_labels
+
+
 training_data = read_file('optdigits/optdigits.train')
-# training_data = np.asarray([[0, 1, 1.0], [1, 0, 1.0], [2, 0, 0.0], [4, 0, 1.0]]).astype(float)
-# test_data = read_file('optdigits/optdigits.test')
+test_data = read_file('optdigits/optdigits.test')
 data_row_length = training_data.shape[1] - 1
 num_of_training_rows = training_data.shape[0]
+num_of_test_row = test_data.shape[0]
 
 cluster_size = 10
-# random_cluster_center_indices = np.random.choice(num_of_training_rows, cluster_size, replace=False)
-# random_cluster_centers = training_data[random_cluster_center_indices, :data_row_length]
 
 clusters = []
-
-# random_cluster_centers = np.asarray([[1, 1], [4, 1]]).astype(float)
-# updated = update_cluster(training_data[0:, 0:data_row_length])
-
-clusters = []
-assignments = []
+cluster_labels = []
+assignment = []
 distances = []
 average_mean_squared_list = []
 mean_squared_seperation_list = []
@@ -127,11 +131,10 @@ for _ in range(5):
         distances = get_distances(training_data, random_cluster_centers)
 
         assignment = assign_inputs(num_of_training_rows, distances)
-
-        clusters.append(update_cluster(training_data, assignment, random_cluster_centers))
-        if index > 1:
-            if np.array_equal(clusters[index], clusters[index - 1]):
-                break
+        clusters_to_update = clusters[len(clusters) - 1] if index > 0 else random_cluster_centers
+        clusters.append(update_cluster(training_data, assignment, clusters_to_update))
+        if index > 1 and np.array_equal(clusters[index], clusters[index - 1]):
+            break
         index += 1
 
     mean_squared_list = []
@@ -148,8 +151,20 @@ average_mean_squared_list = np.asarray(average_mean_squared_list)
 mean_squared_seperation_list = np.asarray(mean_squared_seperation_list)
 mean_entropy_list = np.asarray(mean_entropy_list)
 index_of_best = np.where(average_mean_squared_list == np.amin(average_mean_squared_list))[0][0]
-print(index_of_best)
 print('best of: ')
 print('average mean square error: ', average_mean_squared_list[index_of_best])
 print('mean square seperation: ', average_mean_squared_list[index_of_best])
 print('mean entropy: ', mean_entropy_list[index_of_best])
+
+final_clusters = clusters[len(clusters) - 1]
+cluster_labels = get_cluster_labels(final_clusters, assignment, training_data)
+distances = get_distances(test_data, final_clusters)
+assignments = assign_inputs(test_data.shape[0], distances)
+
+accuracy = 0.0
+for c in range(cluster_size):
+    matrix_data = test_data[np.where(assignments == c)][:, data_row_length]
+    number_of_hits = np.where(matrix_data == cluster_labels[c])
+    accuracy += number_of_hits[0].shape[0]
+
+print(accuracy / num_of_test_row)
